@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Focus - Midnight Glass</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;font-family:'Inter',sans-serif}
+  body{background:#0a0e1f url('https://images.unsplash.com/photo-1531306728370-e2ebd9d7bb99?q=80&w=2000') center/cover fixed; min-height:100vh; color:white; padding:20px;}
+  body::before{content:'';position:fixed;inset:0;background:rgba(10,14,31,0.85);backdrop-filter:blur(10px);z-index:-1}
+ .container{max-width:600px;margin:auto}
+ .glass{background:rgba(255,255,255,0.08);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,0.15);border-radius:20px;box-shadow:0 8px 32px rgba(0,0,0,0.3)}
+ .topbar{display:flex;justify-content:space-between;align-items:center;padding:14px 20px;margin-bottom:20px}
+ .topbar b{font-size:22px}.mode{font-size:12px;color:#8b9eff;margin-left:10px}
+ .on{color:#4ade80}
+ .progress-card{padding:20px;margin-bottom:20px}
+ .progress-head{display:flex;justify-content:space-between;align-items:center}
+ .circle{width:60px;height:60px;border-radius:50%;border:4px solid #38bdf8;border-top-color:rgba(255,255,255,0.1);display:grid;place-items:center;font-weight:700;color:#38bdf8}
+ .bar{height:8px;background:rgba(255,255,255,0.1);border-radius:10px;margin-top:15px;overflow:hidden}
+ .fill{height:100%;background:linear-gradient(90deg,#38bdf8,#818cf8);transition:0.3s;width:0%}
+ .task-head{display:flex;justify-content:space-between;align-items:center;margin:20px 5px 15px}
+ .add-btn{background:rgba(56,189,248,0.15);border:1px solid #38bdf8;color:#38bdf8;padding:8px 16px;border-radius:20px;cursor:pointer;font-weight:600}
+ .task{background:rgba(255,255,255,0.07);backdrop-filter:blur(15px);border:1px solid rgba(255,255,255,0.12);border-radius:16px;padding:16px;display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;transition:0.2s}
+ .task.completed{opacity:0.5}.task.completed .title{text-decoration:line-through}
+ .left{display:flex;align-items:center;gap:12px}
+ .check{width:24px;height:24px;border-radius:7px;border:2px solid rgba(255,255,255,0.3);display:grid;place-items:center;cursor:pointer}
+ .check.done{background:#38bdf8;border-color:#38bdf8}
+ .title{font-weight:600}.meta{font-size:12px;color:#9aa4c7;margin-top:2px}
+ .tag{font-size:11px;padding:4px 10px;border-radius:20px;white-space:nowrap;font-weight:700;border:1px solid}
+ .tag.High{background:rgba(248,113,113,0.15);color:#f87171;border-color:rgba(248,113,113,0.4)}
+ .tag.Medium{background:rgba(251,191,36,0.15);color:#fbbf24;border-color:rgba(251,191,36,0.4)}
+ .tag.Low{background:rgba(52,211,153,0.15);color:#34d399;border-color:rgba(52,211,153,0.4)}
+ .input-area{display:flex;gap:10px;margin-bottom:12px}
+ .input-area input, .input-area select{flex:1;padding:14px 18px;border-radius:14px;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.07);color:white;outline:none}
+ .dock{display:flex;justify-content:space-around;padding:12px;margin-top:25px}
+ /* NEW STYLES ONLY */
+ .stats-new{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:15px}
+ .stat-new{padding:12px;text-align:center}.stat-new b{font-size:18px;display:block}.stat-new span{font-size:10px;color:#9aa4c7}
+ .filters-new{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+ .filters-new input, .filters-new select{padding:10px 12px;border-radius:12px;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.07);color:white;outline:none;font-size:13px;flex:1}
+ .chips-new{display:flex;gap:8px;margin-bottom:15px}
+ .chip-new{padding:6px 14px;border-radius:20px;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.07);color:#9aa4c7;cursor:pointer;font-size:12px}
+ .chip-new.active{background:#38bdf8;color:#0a0e1f;font-weight:700;border-color:#38bdf8}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="glass topbar"><div><b>🌙 Focus</b><span class="mode">Midnight Focus Mode <span class="on">• On</span></span></div><div>🔍 🔔</div></div>
+
+  <div class="glass progress-card">
+    <div class="progress-head">
+      <div><p style="color:#9aa4c7;font-size:13px">Today • <span id="date"></span></p><h2 id="count" style="margin-top:5px">0 of 0 tasks completed</h2></div>
+      <div class="circle" id="circle">0%</div>
+    </div>
+    <div class="bar"><div class="fill" id="fill"></div></div>
+    <p id="focusTimer" style="font-size:12px;color:#9aa4c7;margin-top:10px">⏸ Focus 25:00 - Click to start</p>
+  </div>
+
+  <!-- NEW: STATS - ADDED -->
+  <div class="stats-new">
+    <div class="glass stat-new"><b id="total">0</b><span>TOTAL TASKS</span></div>
+    <div class="glass stat-new"><b id="completedS" style="color:#4ade80">0</b><span>COMPLETED</span></div>
+    <div class="glass stat-new"><b id="pending" style="color:#fbbf24">0</b><span>PENDING</span></div>
+  </div>
+
+  <div class="task-head"><h2>Today</h2><button class="add-btn" onclick="document.getElementById('taskInput').focus()">+ New Task</button></div>
+
+  <!-- ORIGINAL INPUT + NEW PRIORITY SELECT ADDED -->
+  <div class="input-area">
+    <input id="taskInput" placeholder="Add new task...">
+    <select id="prioSelect"><option value="High">High</option><option value="Medium" selected>Medium</option><option value="Low">Low</option></select>
+    <button class="add-btn" style="padding:14px 22px" onclick="addTask()">Add</button>
+  </div>
+
+  <!-- NEW: SEARCH + FILTERS ADDED -->
+  <div class="filters-new">
+    <input id="search" placeholder="🔍 Search by title..." oninput="render()">
+    <select id="filterPrio" onchange="render()"><option value="All">All Priorities</option><option value="High">High</option><option value="Medium">Medium</option><option value="Low">Low</option></select>
+  </div>
+  <div class="chips-new">
+    <div class="chip-new active" data-f="All" onclick="setFilter('All')">All</div>
+    <div class="chip-new" data-f="Active" onclick="setFilter('Active')">Active</div>
+    <div class="chip-new" data-f="Completed" onclick="setFilter('Completed')">Completed</div>
+  </div>
+
+  <div id="list"></div>
+
+  <div class="glass dock"><span class="active">🏠<br>Today</span><span>🗓️<br>Upcoming</span><span>📅<br>Calendar</span><span>⚙️<br>Settings</span></div>
+</div>
+
+<script>
+let statusFilter='All'; // NEW
+let tasks = JSON.parse(localStorage.getItem('midnight-tasks') || '[{"t":"Design landing page","m":"Work • High priority","tag":"High","done":false},{"t":"Review quarterly reports","m":"Work • Due today 4:00 PM","tag":"Medium","done":false},{"t":"Morning workout","m":"Personal • 7:00 AM","tag":"Low","done":true}]');
+let timerInt=null, sec=1500;
+const dateEl=document.getElementById('date'), listEl=document.getElementById('list'), fillEl=document.getElementById('fill'), circleEl=document.getElementById('circle'), countEl=document.getElementById('count');
+dateEl.textContent=new Date().toLocaleDateString('en-US',{weekday:'short', month:'short', day:'numeric'});
+
+function save(){localStorage.setItem('midnight-tasks',JSON.stringify(tasks))}
+
+// NEW: Filter setter
+function setFilter(s){statusFilter=s; document.querySelectorAll('.chip-new').forEach(c=>c.classList.toggle('active',c.dataset.f===s)); render();}
+
+function render(){
+  // NEW: filtering logic
+  let search=document.getElementById('search').value.toLowerCase();
+  let prioF=document.getElementById('filterPrio').value;
+  let filtered=tasks.filter((x)=>{
+    let okSearch=x.t.toLowerCase().includes(search);
+    let okStatus=statusFilter==='All' || (statusFilter==='Active' && !x.done) || (statusFilter==='Completed' && x.done);
+    let okPrio=prioF==='All' || x.tag===prioF;
+    return okSearch && okStatus && okPrio;
+  });
+
+  listEl.innerHTML=''; let done=tasks.filter(x=>x.done).length;
+  
+  // NEW: stats update
+  document.getElementById('total').textContent=tasks.length;
+  document.getElementById('completedS').textContent=done;
+  document.getElementById('pending').textContent=tasks.length-done;
+
+  if(filtered.length===0){listEl.innerHTML=`<div class="glass" style="padding:16px;text-align:center;color:#9aa4c7">No tasks found</div>`;}
+  filtered.forEach((x)=>{
+    let realIndex=tasks.indexOf(x);
+    let div=document.createElement('div'); div.className='task'+(x.done?' completed':'');
+    div.innerHTML=`<div class="left"><div class="check ${x.done?'done':''}" onclick="toggle(${realIndex})">${x.done?'✓':''}</div><div><div class="title">${x.t}</div><div class="meta">${x.m} • ${x.tag}</div></div></div><div style="display:flex;align-items:center"><span class="tag ${x.tag}">${x.tag}</span><button style="background:none;border:none;cursor:pointer;margin-left:8px" onclick="editTask(${realIndex})">✏️</button><button style="background:none;border:none;cursor:pointer;margin-left:4px" onclick="del(${realIndex})">🗑️</button></div>`;
+    listEl.appendChild(div);
+  });
+  let pct=tasks.length?Math.round(done/tasks.length*100):0;
+  fillEl.style.width=pct+'%'; circleEl.textContent=pct+'%'; countEl.textContent=`${done} of ${tasks.length} tasks completed`;
+}
+function addTask(){
+  let inp=document.getElementById('taskInput'); if(!inp.value.trim())return;
+  let p=document.getElementById('prioSelect').value; // NEW
+  tasks.unshift({t:inp.value, m:`${p} Priority • Due today`, tag:p, done:false});
+  inp.value=''; save(); render();
+}
+function toggle(i){tasks[i].done=!tasks[i].done; save(); render();}
+function del(i){tasks.splice(i,1); save(); render();}
+function editTask(i){let nt=prompt('Edit task:',tasks[i].t); if(nt){tasks[i].t=nt; save(); render();}}
+document.getElementById('focusTimer').onclick=function(){
+  if(timerInt){clearInterval(timerInt); timerInt=null; this.textContent='⏸ Focus 25:00 - Click to start'; sec=1500; return;}
+  timerInt=setInterval(()=>{sec--; let m=Math.floor(sec/60), s=sec%60; this.textContent=`▶ Focus ${m}:${s.toString().padStart(2,'0')} running... (click to stop)`; if(sec<=0){clearInterval(timerInt); timerInt=null; alert('Focus session done! Good job!'); sec=1500; this.textContent='⏸ Focus 25:00 - Click to start';}},1000);
+}
+render();
+</script>
+</body>
+</html>

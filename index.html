@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="FocusList - Functional To-Do with priority, search, filters and persistence">
+<title>FocusList - Midnight Glass</title>
+<style>
+/* Architecture: CSS Variables & Modular */
+:root{--bg:#0f1117;--card:rgba(255,255,255,0.06);--border:rgba(255,255,255,0.12);--text:#e5e7eb;--muted:#9ca3af;--accent:#8b5cf6;--high:#ef4444;--med:#f59e0b;--low:#10b981}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Inter,system-ui,sans-serif;background:radial-gradient(1200px 600px at 20% -10%, #1e1b4b, transparent), radial-gradient(800px 400px at 90% 10%, #312e81, transparent), var(--bg);color:var(--text);min-height:100vh;padding:16px}
+.container{max-width:720px;margin:0 auto}
+header{margin:24px 0;text-align:center}
+header h1{font-size:2rem;letter-spacing:-0.02em}
+header p{color:var(--muted);margin-top:6px}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:16px 0}
+.stat{background:var(--card);border:1px solid var(--border);backdrop-filter:blur(12px);border-radius:16px;padding:14px;text-align:center}
+.stat strong{display:block;font-size:1.4rem}
+.controls{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:16px;backdrop-filter:blur(12px)}
+.input-row{display:flex;gap:8px}
+.input-row input,.controls select{flex:1;background:#0b0d13;border:1px solid var(--border);color:var(--text);padding:12px 14px;border-radius:12px;outline:none}
+.input-row button{background:var(--accent);color:white;border:0;padding:12px 18px;border-radius:12px;cursor:pointer;font-weight:600}
+.filters{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.filters button,.filters input,.filters select{background:#0b0d13;border:1px solid var(--border);color:var(--text);padding:8px 12px;border-radius:10px}
+.filters button.active{background:var(--accent);border-color:var(--accent)}
+.task-list{margin-top:16px;display:flex;flex-direction:column;gap:10px}
+.task{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:14px;display:flex;justify-content:space-between;align-items:center;gap:10px;backdrop-filter:blur(12px)}
+.task.completed{opacity:0.6}
+.task.completed span{text-decoration:line-through}
+.pill{font-size:0.7rem;padding:4px 8px;border-radius:999px;font-weight:700}
+.pill.high{background:rgba(239,68,68,0.2);color:#fca5a5;border:1px solid rgba(239,68,68,0.3)}
+.pill.med{background:rgba(245,158,11,0.2);color:#fcd34d;border:1px solid rgba(245,158,11,0.3)}
+.pill.low{background:rgba(16,185,129,0.2);color:#6ee7b7;border:1px solid rgba(16,185,129,0.3)}
+.task-actions{display:flex;gap:6px}
+.task-actions button{background:transparent;border:1px solid var(--border);color:var(--text);padding:6px 10px;border-radius:8px;cursor:pointer}
+@media(max-width:600px){.stats{grid-template-columns:1fr 1fr 1fr}.input-row{flex-direction:column}}
+</style>
+</head>
+<body>
+<div class="container">
+<header role="banner">
+<h1>FocusList</h1>
+<p>Midnight Glass • Priority • Search • Persistent</p>
+</header>
+
+<section class="stats" aria-label="Task statistics">
+<div class="stat"><strong id="totalCount">0</strong><span>Total</span></div>
+<div class="stat"><strong id="completedCount">0</strong><span>Completed</span></div>
+<div class="stat"><strong id="pendingCount">0</strong><span>Pending</span></div>
+</section>
+
+<main>
+<section class="controls" aria-label="Task controls">
+<div class="input-row">
+<input id="taskInput" type="text" placeholder="Add a new task... (Press Enter)" aria-label="New task input" maxlength="120">
+<select id="priorityInput" aria-label="Select priority"><option value="low">Low</option><option value="med" selected>Medium</option><option value="high">High</option></select>
+<button id="addBtn" aria-label="Add task">Add</button>
+</div>
+<div class="filters" role="toolbar" aria-label="Filters">
+<input id="searchInput" type="search" placeholder="Search tasks..." aria-label="Search tasks">
+<select id="filterPriority" aria-label="Filter by priority"><option value="all">All Priorities</option><option value="high">High</option><option value="med">Medium</option><option value="low">Low</option></select>
+<button data-filter="all" class="active" aria-pressed="true">All</button>
+<button data-filter="active" aria-pressed="false">Active</button>
+<button data-filter="completed" aria-pressed="false">Completed</button>
+<button id="clearCompleted" aria-label="Clear completed tasks">Clear Completed</button>
+</div>
+</section>
+
+<section class="task-list" id="taskList" aria-live="polite" aria-label="Task list"></section>
+</main>
+</div>
+
+<script>
+// Clean Architecture: State, Persistence, Render separated
+const STORAGE_KEY = 'focuslist-midnight-v2';
+let tasks = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+let currentFilter = 'all';
+let priorityFilter = 'all';
+let searchQuery = '';
+
+const els = {
+input: document.getElementById('taskInput'),
+priority: document.getElementById('priorityInput'),
+addBtn: document.getElementById('addBtn'),
+list: document.getElementById('taskList'),
+search: document.getElementById('searchInput'),
+filterPriority: document.getElementById('filterPriority'),
+total: document.getElementById('totalCount'),
+completed: document.getElementById('completedCount'),
+pending: document.getElementById('pendingCount'),
+};
+
+function save(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks)); }
+function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
+
+function addTask(){
+const text = els.input.value.trim();
+if(!text) return;
+tasks.unshift({id:uid(), text, priority: els.priority.value, completed:false, createdAt: Date.now()});
+els.input.value='';
+save(); render();
+}
+
+function toggleTask(id){
+const t = tasks.find(x=>x.id===id);
+if(t){ t.completed=!t.completed; save(); render(); }
+}
+function deleteTask(id){ tasks = tasks.filter(x=>x.id!==id); save(); render(); }
+function editTask(id){
+const t = tasks.find(x=>x.id===id);
+if(!t) return;
+const newText = prompt('Edit task:', t.text);
+if(newText!==null && newText.trim()){ t.text=newText.trim(); save(); render(); }
+}
+
+function getFiltered(){
+return tasks.filter(t=>{
+if(currentFilter==='active' && t.completed) return false;
+if(currentFilter==='completed' &&!t.completed) return false;
+if(priorityFilter!=='all' && t.priority!==priorityFilter) return false;
+if(searchQuery &&!t.text.toLowerCase().includes(searchQuery.toLowerCase())) return false;
+return true;
+});
+}
+
+function render(){
+const filtered = getFiltered();
+els.list.innerHTML = filtered.map(t=>`
+<article class="task ${t.completed?'completed':''}" data-id="${t.id}">
+<div style="display:flex;gap:10px;align-items:center;flex:1">
+<input type="checkbox" ${t.completed?'checked':''} aria-label="Mark ${t.text} as ${t.completed?'active':'completed'}" onchange="toggleTask('${t.id}')">
+<span style="flex:1">${escapeHtml(t.text)}</span>
+<span class="pill ${t.priority}">${t.priority.toUpperCase()}</span>
+</div>
+<div class="task-actions">
+<button onclick="editTask('${t.id}')" aria-label="Edit task">Edit</button>
+<button onclick="deleteTask('${t.id}')" aria-label="Delete task">Delete</button>
+</div>
+</article>
+`).join('') || `<div style="text-align:center;color:var(--muted);padding:20px">No tasks found. Add your first task above.</div>`;
+
+els.total.textContent = tasks.length;
+els.completed.textContent = tasks.filter(x=>x.completed).length;
+els.pending.textContent = tasks.filter(x=>!x.completed).length;
+}
+
+function escapeHtml(s){ return s.replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m])); }
+
+// Events - Accessibility & Keyboard support
+els.addBtn.addEventListener('click', addTask);
+els.input.addEventListener('keydown', e=>{ if(e.key==='Enter') addTask(); });
+els.search.addEventListener('input', e=>{ searchQuery=e.target.value; render(); });
+els.filterPriority.addEventListener('change', e=>{ priorityFilter=e.target.value; render(); });
+document.querySelectorAll('[data-filter]').forEach(b=>{
+b.addEventListener('click', ()=>{
+document.querySelectorAll('[data-filter]').forEach(x=>{x.classList.remove('active'); x.setAttribute('aria-pressed','false');});
+b.classList.add('active'); b.setAttribute('aria-pressed','true');
+currentFilter=b.dataset.filter; render();
+});
+});
+document.getElementById('clearCompleted').addEventListener('click', ()=>{
+tasks = tasks.filter(t=>!t.completed); save(); render();
+});
+
+// Initial render
+render();
+</script>
+</body>
+</html>
